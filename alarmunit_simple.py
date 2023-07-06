@@ -6,9 +6,7 @@ Created on Tue Jul  4 16:21:15 2023
 @author: pgross
 """
 
-from machine import Pin, ADC
-from time import sleep
-from Timer import Timer
+from machine import Pin, ADC, Timer
 from Error import Error
 
 # Digital input pins
@@ -21,25 +19,30 @@ analog_input_pin = ADC(Pin(26))
 analog_output_pin = Pin(5, Pin.OUT)
 analog_error_threshold = 5000
 
-# Create instances of Timer and Error
-timer = Timer(5)  # Timer with a duration of 5 seconds
+# Create instances Error class
 digital_error = Error(digital_input_pin, digital_output_pin, digital_error_value)
 analog_error = Error(analog_input_pin, analog_output_pin, analog_error_threshold)
 
-# Main program loop
-while True:
-    if timer.check():  # Check if the timer has expired
-        # Check for digital error
-        digital_error.check_digital()
-        
-        # Check for analog error
-        analog_error.check_analog()
+# Timer callback function
+def timer_callback(timer):
+    # Check for digital error
+    digital_error.check_digital()
 
-        # Reset the timer
-        timer.reset()
+    # Check for analog error
+    analog_error.check_analog()
     
-    # Add any other code or operations you need to perform within the main loop
-    # ...
+    # Sleep is NOT needed in this implementation!
 
-    # Sleep for a short duration to avoid busy-waiting
-    sleep(0.1)
+# Create a Timer object
+timer = Timer(-1)  # Use the first available hardware timer (-1) on the microcontroller
+
+# Set the timer callback function
+timer.init(period=5000, mode=Timer.PERIODIC, callback=timer_callback)
+# The timer will fire every 5 seconds (5000 milliseconds) and call the 
+# timer_callback function. Within these periods, not other code is executed.
+
+# No need for a while loop if there are no additional code or operations to run
+# while True:
+#     pass
+
+# Add any other code or operations you need to perform outside the main loop
