@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jul  4 16:21:15 2023
@@ -7,18 +7,19 @@ Created on Tue Jul  4 16:21:15 2023
 """
 
 from machine import Pin, ADC, Timer
-from Error import Error
+from Error_test import Error
+
 
 # Digital pins
-digital_input_pin = Pin(3, Pin.IN)
-digital_error_pin = Pin(4, Pin.OUT)
-digital_error_value = 1
-analog_error_pin = Pin(5, Pin.OUT)
-no_errors_pin = Pin(6, Pin.OUT)
+digital_input_pin = Pin(14, Pin.IN)
+digital_error_pin = Pin(15, Pin.OUT)
+digital_error_value = 0
+analog_error_pin = Pin(16, Pin.OUT)
+no_errors_pin = Pin(17, Pin.OUT)
 
 # Analog input pins
 analog_input_pin = ADC(Pin(26))
-analog_error_threshold = 5000
+analog_error_threshold = 32000
 
 # Create instances Error class
 digital_error = Error(digital_input_pin, digital_error_pin, digital_error_value)
