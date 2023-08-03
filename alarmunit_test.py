@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jul  4 16:21:15 2023
@@ -7,30 +7,38 @@ Created on Tue Jul  4 16:21:15 2023
 """
 
 from machine import Pin, ADC, Timer
-from Error import Error
+from Error_test import Error
+
 
 # Digital pins
-digital_input_pin = Pin(3, Pin.IN)
-digital_error_pin = Pin(4, Pin.OUT)
-digital_error_value = 1
-analog_error_pin = Pin(5, Pin.OUT)
-no_errors_pin = Pin(6, Pin.OUT)
+digital_input_pin_1 = Pin(19, Pin.IN)
+digital_error_pin_1 = Pin(17, Pin.OUT)
+digital_error_value_1 = 0
+
+digital_input_pin_2 = Pin(20, Pin.IN)
+digital_error_pin_2 = Pin(18, Pin.OUT)
+digital_error_value_2 = 0
+
+#analog_error_pin = Pin(16, Pin.OUT)
+no_errors_pin = Pin(16, Pin.OUT)
 
 # Analog input pins
 analog_input_pin = ADC(Pin(26))
-analog_error_threshold = 5000
+analog_error_threshold = 32000
 
 # Create instances Error class
-digital_error = Error(digital_input_pin, digital_error_pin, digital_error_value)
-analog_error = Error(analog_input_pin, analog_error_pin, analog_error_threshold)
+digital_error_1 = Error(digital_input_pin_1, digital_error_pin_1, digital_error_value_1)
+digital_error_2 = Error(digital_input_pin_2, digital_error_pin_2, digital_error_value_2)
+#analog_error = Error(analog_input_pin, analog_error_pin, analog_error_threshold)
 
 # Timer callback function
 def timer_callback(timer):
     # Check for digital error
-    digital_error.check_digital()
+    digital_error_1.check_digital()
+    digital_error_2.check_digital()
 
     # Check for analog error
-    analog_error.check_analog()
+    #analog_error.check_analog()
     
     # Check for no errors and light pin
     Error.handle_no_errors(no_errors_pin)
@@ -41,7 +49,7 @@ def timer_callback(timer):
 timer = Timer(-1)  # Use the first available hardware timer (-1) on the microcontroller
 
 # Set the timer callback function
-timer.init(period=5000, mode=Timer.PERIODIC, callback=timer_callback)
+timer.init(period=1000, mode=Timer.PERIODIC, callback=timer_callback)
 # The timer will fire every 5 seconds (5000 milliseconds) and call the 
 # timer_callback function. Within these periods, not other code is executed.
 
