@@ -11,9 +11,9 @@ from Error_test import Error
 
 
 # Digital pins
-digital_input_pin_1 = Pin(21, Pin.IN)
+digital_input_pin_1 = Pin(22, Pin.IN)
 digital_error_pin_1 = Pin(17, Pin.OUT)
-digital_error_value_1 = 0
+digital_error_value_1 = 1
 
 #digital_input_pin_2 = Pin(20, Pin.IN)
 #digital_error_pin_2 = Pin(18, Pin.OUT)
@@ -24,7 +24,7 @@ no_errors_pin = Pin(16, Pin.OUT)
 
 # Analog input pins
 analog_input_pin_1 = ADC(Pin(26))
-analog_input_pin_2 = ADC(Pin(27))
+#analog_input_pin_2 = ADC(Pin(27))
 analog_error_threshold = 32000
 
 # Create instances Error class
