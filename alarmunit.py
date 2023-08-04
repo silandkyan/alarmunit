@@ -20,6 +20,7 @@ digital_error_value_1 = 1
 #digital_error_value_2 = 0
 
 analog_error_pin_1 = Pin(18, Pin.OUT)
+
 no_errors_pin = Pin(16, Pin.OUT)
 
 # Analog input pins
@@ -27,7 +28,7 @@ analog_input_pin_1 = ADC(Pin(26))
 #analog_input_pin_2 = ADC(Pin(27))
 analog_error_threshold = 32000
 
-# Create instances Error class
+# Create instances of Error class
 digital_error_1 = Error(digital_input_pin_1, digital_error_pin_1, digital_error_value_1)
 #digital_error_2 = Error(digital_input_pin_2, digital_error_pin_2, digital_error_value_2)
 analog_error_1 = Error(analog_input_pin_1, analog_error_pin_1, analog_error_threshold)
