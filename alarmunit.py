@@ -21,55 +21,29 @@ led_analog = Pin(21, Pin.OUT)
 
 A = Alarm()
 
-# L1 = A.LED(led1, persistent=False)
-# L2 = A.LED(led2, persistent=False)
-# L_analog = A.LED(led_analog, persistent=False)
-L1 = A.Action('L1', [led1], [1], [0], False)
-L2 = A.Action('L2', [led2], [1], [0], False)
-L3 = A.Action('L3', [led_analog], [1], [0], True)
+L1 = A.Action('L1', led1, 1)
+L2 = A.Action('L2', led2, 0)
+L3 = A.Action('L3', led_analog, 0)
 
-# weiter testen mit 2 sensoren!
-
-S1 = A.Sensor('S1', pin1, 'digital', error_value=0, error_actions=[L2,L3], normal_actions=[L1])
-# S2 = A.Sensor('S2', pin2, 'digital', error_value=0, errors=[L2], norms=[])
-#S_adc = A.Sensor('S_adc', pin_analog, 'analog', analog_error_threshold, errors=[L_analog], norms=[])
+S1 = A.Sensor('S1', pin1, 'digital', norm_val=1, actions=[L1, L2])
+S_adc = A.Sensor('S_adc', pin_analog, 'analog', analog_error_threshold, actions=[L3, L2])
 
 # Timer callback function
 def timer_callback(timer):
-    print(A.sensors, '\n', A.actions)
-    #print(pin_analog.read_u16())
-    # Check for digital error
+    # print(A.sensors, '\n', A.actions)
+    
+    for action in A.actions:# TODO: maybe as class method reset_trigges?
+        action.triggers = action.triggers[0:1]
+        
+    # print(A.actions)#, A.actions.triggers)
+
     for sensor in A.sensors:
-        #print('err: ', sensor.error_actions)
-        #print('norm:', sensor.normal_actions)
         sensor.check_sensor()
         
-    print('staged err: ', A.staged_errors)
-    print('staged norm:', A.staged_normals)
-        
-    errors = A.get_unique_actions(A.staged_errors)
-    normals  = A.get_unique_actions(A.staged_normals)
-    
-    print('uni err: ', errors)
-    print('uni norm:', normals)
-    
     for action in A.actions:
-        print(action)
-        if action in errors:
-            action.set_active()
-        elif action in normals:
-            action.set_active()
-        else:
-            action.set_normal()
-        #elif action in norms and action not in errors:
-        #    action.trigger_normal()
-        
-    # print(A.active_leds)
-    # for led in A.leds:
-    #     if led in A.active_leds.values():
-    #         led.pin.on()
-    #     else:
-    #         led.pin.off()
+        action.eval_state()
+        action.prepare_output()
+        action.set_output()
 
     # Sleep is NOT needed in this implementation!
     print('time: ', time())

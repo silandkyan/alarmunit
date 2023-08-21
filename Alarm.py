@@ -5,51 +5,34 @@ Created on Tue Aug 15 13:11:09 2023
 
 @author: pgross
 """
+from machine import Timer
 
 class Alarm:
-    leds = set()
     sensors = set()
     actions = set()
     
-    staged_errors = {}
-    staged_normals = {}
-    
-    @classmethod
-    def get_unique_actions(cls, staged_actions):
-        unique_actions = set()
-        for entry in staged_actions.values():
-            unique_actions.update(entry)  
-        return unique_actions
-    
 
     class Sensor:
-        def __init__(self, name, pin_in, input_type,
-                     error_value, error_actions, normal_actions):
+        def __init__(self, name, pin_in, input_type, norm_val, actions):
             '''Init takes pin objects from the machine module of Micropython.
             Parameters:
                 name: str; descriptive name 
                 pin_in: Pin object for the input signal; can be analog 
                     or digital pin.
                 input_type: "digital" or "analog"
-                error_value: value of digital or analog error signal on pin_in
-                    digital case: 0 or 1, whichever is considered as error.
-                    analog case: int value above which input is considered as error.
-                error_actions: list of Action objects staged in case of incorrect input signal.
-                normal_actions: list of Action objects staged in case of correct input signal.'''
+                norm_val: value of digital or analog normal signal on pin_in
+                    digital case: 0 or 1, whichever is considered as normal.
+                    analog case: int value below which input is considered as normal.
+                actions: list of Action objects to be triggered by this Sensor.'''
             self.name = name
             self.pin_in = pin_in
             self.input_type = input_type
-            self.error_value = error_value
-            self.error_actions = error_actions
-            self.normal_actions = normal_actions
-            self.error_detected = False
-            self.error_counter = 0
+            self.norm_val = norm_val
+            self.actions = actions
             Alarm.sensors.add(self)
-            Alarm.staged_errors.update({self.name: set()})
-            Alarm.staged_normals.update({self.name: set(self.normal_actions)})
         
         def check_sensor(self): # TODO: maybe as classmethod?
-            #print(self.led_list)
+            # print(self.led_list)
             if self.input_type == "digital":
                 self.check_digital()
             elif self.input_type == "analog":
@@ -58,142 +41,94 @@ class Alarm:
                 print('Wrong input type!')
             
         def check_digital(self):
-            if self.pin_in.value() == self.error_value:
-                self.error_counter += 1
-                self.stage_errors()
-                self.unstage_normals()
-                self.error_detected = True
+            if self.pin_in.value() != self.norm_val:
+                self.write_to_actions(1)
                 print('Error detected!')
-            elif self.error_counter > 0:
-                self.unstage_errors()
-                self.stage_normals()
-                self.error_detected = False
+            else:
+                self.write_to_actions(0)
                 
         def check_analog(self):
             analog_value = self.pin_in.read_u16()
-            if analog_value >= self.error_value:
-                self.error_counter += 1
-                self.stage_errors()
-                self.unstage_normals()
-                self.error_detected = True
+            if analog_value >= self.norm_val:
+                self.write_to_actions(1)
                 print('Error detected!')
-            elif self.error_counter > 0:
-                self.unstage_errors()
-                self.stage_normals()
-                self.error_detected = False
-                    
-        def stage_errors(self):
-            '''Add all error actions to staged_errors dict to prepare for execution in error mode.'''
-            #print('stage err')
-            Alarm.staged_errors.update({self.name: set(self.error_actions)})
+            else:
+                self.write_to_actions(0)
             
-        def unstage_errors(self):
-            '''Remove error actions from staged_errors dict to prepare for execution in normal mode.
-            Checks for persistent behavior.'''
-            #print('unstage err')
-            helperset = set()
-            for error in self.error_actions:
-                if error.persistent == True:
-                    helperset.update(set([error]))
-                    #print(helperset)
-            Alarm.staged_errors.update({self.name: helperset})
-        
-        def stage_normals(self):
-            '''Add normal actions to staged_normals dict to prepare for execution in normal mode.
-            Checks for persistent behavior.'''
-            #print('stage norm')
-            helperset = set()
-            for norm in self.normal_actions:
-                if norm.persistent == False:
-                    helperset.update(set([norm]))
-                    #print(helperset)
-            Alarm.staged_normals.update({self.name: helperset})
-            
-        def unstage_normals(self):
-            '''Remove all normal actions from staged_normals dict to prepare for execution in error mode.'''
-            #print('unstage norm')
-            Alarm.staged_normals.update({self.name: set()})
-            
-            
-    class Action: # TODO
-        def __init__(self, name, pins_out, active_values, normal_values, persistent):
+        def write_to_actions(self, value):
+            for action in self.actions:
+                action.triggers.append(value)
+                
+                
+    class Action:
+        def __init__(self, name, pin_out, norm_out, delay=None, persistent=False):
             '''Init takes pin objects from the machine module of Micropython.
             Parameters:
                 name: str; descriptive name
-                pins_out: list of Pin objects for the input signals; must be digital pin.
-                active_values: list of 1 (on) or 0 (off) written to pins_out if triggered active.
-                normal_values: list of 1 (on) or 0 (off) written to pins_out in case of normal operation.
+                pin_out: Pin objects for the output signal; must be digital pin.
+                norm_out: 1 (on) or 0 (off) written to pin_out if state is normal.
+                delay: None or time in sec to wait before out signal switches to error mode.
                 persistent: True or False if Error object is treated as persistent.'''
             self.name = name
-            self.pins_out = pins_out
-            self.active_values = active_values
-            self.normal_values = normal_values 
+            self.pin_out = pin_out
+            self.norm_out = norm_out
+            self.err_out = abs(self.norm_out - 1)
+            self.delay = delay
             self.persistent = persistent
+            self.triggers = [0]
+            self.curr_state = 0 # state during current iteration of main loop
+            self.last_state = 0 # state during last iteration of main loop
+            self.actual_state  = 0 # state actually written to pin_out
             Alarm.actions.add(self)
             
-        def set_active(self):
-            for pin, active in zip(self.pins_out, self.active_values):
-                #print('active:', pin, active)
-                if active == 1:
-                    pin.on()
-                elif active == 0:
-                    pin.off()
+        def eval_state(self):
+            self.last_state = self.curr_state
+            if any(item == 1 for item in self.triggers):
+                self.curr_state = 1
+            else:
+                self.curr_state = 0
+                
+        def prepare_output(self):
+            if self.delay == None:
+                self.actual_state = self.curr_state
+                self.set_persistent()
+            else:
+                if self.curr_state == 0 and self.last_state == 0:
+                    self.actual_state = self.curr_state
+                elif self.curr_state == 1 and self.last_state == 0:
+                    self.set_timer()
+                elif self.curr_state == 0 and self.last_state == 1:
+                    self.acttimer.deinit() 
+                    print('timer off')
                     
-        def set_normal(self):
-            for pin, norm in zip(self.pins_out, self.normal_values):
-                #print('normal:', pin, norm)
-                if norm == 1:
-                    pin.on()
-                elif norm == 0:
-                    pin.off()
+        def set_output(self):
+            if self.actual_state == 0:
+                if self.norm_out == 0:
+                    self.pin_out.off()
+                elif self.norm_out == 1:
+                    self.pin_out.on()
+            elif self.actual_state == 1:
+                if self.norm_out == 0:
+                    self.pin_out.on()
+                elif self.norm_out == 1:
+                    self.pin_out.off()
+                    
+        def set_timer(self):
+            # Create a Timer object
+            print('timer on')
+            self.timercounter = 0
+            self.acttimer = Timer(-1)
+            self.acttimer.init(period=self.delay*1000,
+                               mode=Timer.ONE_SHOT, callback=self.actiontimer)
                 
-
-            # Alarm.active_leds.setdefault(sensor_name, set()).add(self)
-            # # discard led from dict of inactive leds:
-            # helperset = Alarm.inactive_leds.get(sensor_name, set())
-            # helperset.discard(self)
-            # Alarm.inactive_leds[sensor_name] = helperset
+        def actiontimer(self, timer):
+            self.actual_state = self.curr_state
+            self.set_persistent()
             
-            # for helperset in Alarm.active_leds.values():
-            #     Alarm.active = Alarm.active.union(helperset)
-            
-
-    class LED:
-        def __init__(self, pin, persistent):
-            '''
-            pin: Pin object for the led signal; must be digital pin.
-            '''
-            self.pin = pin
-            self.persistent = persistent
-            self.pin.off()
-            Alarm.leds.add(self)
-            Alarm.inactive.add(self)
-
-        def activate_led(self, sensor_name):
-            # Alarm.active_leds.add(self)
-            #print(sensor_name, 'act', self)
-            # add led to dict of active leds:
-            Alarm.active_leds.setdefault(sensor_name, set()).add(self)
-            # discard led from dict of inactive leds:
-            helperset = Alarm.inactive_leds.get(sensor_name, set())
-            helperset.discard(self)
-            Alarm.inactive_leds[sensor_name] = helperset
-            
-            for helperset in Alarm.active_leds.values():
-                Alarm.active = Alarm.active.union(helperset)
-            
-        def deactivate_led(self, sensor_name):
-            if self.persistent == False:
-                #print(sensor_name, 'deact', self)
-                #Alarm.active_leds.pop(sensor_name, None)
-                # discard led from dict of active leds:
-                helperset = Alarm.active_leds.get(sensor_name, set())
-                helperset.discard(self)
-                Alarm.active_leds[sensor_name] = helperset
-                # add led to dict of inactive leds:
-                Alarm.inactive_leds.setdefault(sensor_name, set()).add(self)
+        def set_persistent(self):
+            if self.persistent == True:
+                self.triggers[0] = self.actual_state
+                print('set persistent')
                 
-                for helperset in Alarm.inactive_leds.values():
-                    Alarm.inactive = Alarm.inactive.union(helperset)
-
-
+###
+         
