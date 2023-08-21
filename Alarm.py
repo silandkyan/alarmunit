@@ -11,6 +11,22 @@ class Alarm:
     sensors = set()
     actions = set()
     
+    @classmethod
+    def check_sensors(cls):
+        for sensor in cls.sensors:
+            sensor.check_sensor()
+            
+    @classmethod
+    def reset_action_triggers(cls):
+        for action in cls.actions:
+            action.triggers = action.triggers[0:1]
+        
+    @classmethod
+    def run_actions(cls):
+        for action in cls.actions:
+            action.eval_state()
+            action.prepare_output()
+            action.set_output()
 
     class Sensor:
         def __init__(self, name, pin_in, input_type, norm_val, actions):
@@ -31,8 +47,9 @@ class Alarm:
             self.actions = actions
             Alarm.sensors.add(self)
         
-        def check_sensor(self): # TODO: maybe as classmethod?
-            # print(self.led_list)
+        def check_sensor(self):
+            '''Checks the current sensor state (good=0, bad=1) and writes
+            this state to the connected Action objects.'''
             if self.input_type == "digital":
                 self.check_digital()
             elif self.input_type == "analog":

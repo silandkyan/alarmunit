@@ -30,20 +30,9 @@ S_adc = A.Sensor('S_adc', pin_analog, 'analog', analog_error_threshold, actions=
 
 # Timer callback function
 def timer_callback(timer):
-    # print(A.sensors, '\n', A.actions)
-    
-    for action in A.actions:# TODO: maybe as class method reset_trigges?
-        action.triggers = action.triggers[0:1]
-        
-    # print(A.actions)#, A.actions.triggers)
-
-    for sensor in A.sensors:
-        sensor.check_sensor()
-        
-    for action in A.actions:
-        action.eval_state()
-        action.prepare_output()
-        action.set_output()
+    A.reset_action_triggers()
+    A.check_sensors()
+    A.run_actions()
 
     # Sleep is NOT needed in this implementation!
     print('time: ', time())
@@ -54,8 +43,8 @@ timer = Timer(-1)  # Use the first available hardware timer (-1) on the microcon
 
 # Set the timer callback function
 timer.init(period=1000, mode=Timer.PERIODIC, callback=timer_callback)
-# The timer will fire every 5 seconds (5000 milliseconds) and call the 
-# timer_callback function. Within these periods, not other code is executed.
+# The timer will fire every x seconds (x000 milliseconds) and call the 
+# timer_callback function.
 
 # No need for a while loop if there are no additional code or operations to run
 # while True:
