@@ -28,9 +28,9 @@ A = Alarm()
 
 
 ### ACTIONS ###
-L1 = A.Action('L1', led1, 1)
-L2 = A.Action('L2', led2, 0)
-L3 = A.Action('L3', led_analog, 0)
+L1 = A.Action('L1', led1, norm_out=0)
+L2 = A.Action('L2', led2, norm_out=0, persistent=False, delay=2)
+L3 = A.Action('L3', led_analog, norm_out=0)
 
 
 ### SENSORS ###
