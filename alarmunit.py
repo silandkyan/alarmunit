@@ -13,7 +13,7 @@ from Error_test import Error
 # Digital pins
 digital_input_pin_1 = Pin(22, Pin.IN)
 digital_error_pin_1 = Pin(17, Pin.OUT)
-digital_error_value_1 = 1
+digital_error_value_1 = 0
 
 #digital_input_pin_2 = Pin(20, Pin.IN)
 #digital_error_pin_2 = Pin(18, Pin.OUT)

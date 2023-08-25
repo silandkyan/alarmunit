@@ -9,9 +9,6 @@ class Error:
     
     error_list = []
     instance_list = []
-    matrix = [nxm]
-    
-    
     #persist_error = False 
 
     @classmethod
@@ -19,6 +16,7 @@ class Error:
         for inst in cls.instance_list:
             print(inst.pin_in, inst.active_error)
             if inst.active_error == True:
+                
                 inst.error_list.append(inst)
         if len(cls.error_list) == 0:
             pin_out.on()
@@ -28,13 +26,10 @@ class Error:
         cls.error_list = []
         
             
-    def __init__(self, pin_in, error_type, error_row, error_value, no_error_value):
+    def __init__(self, pin_in, pins_out, error_value):
         self.pin_in = pin_in
-        self.error_type = error_type
-        self.error_row = error_row
+        self.pins_out = pins_out
         self.error_value = error_value
-        self.no_error_value = no_error_value
-        
         Error.instance_list.append(self)
         
     def persistent_error(self):
@@ -54,13 +49,10 @@ class Error:
             #print('Persistent error resolved callback function active!')
             
     def check_digital(self):
-        if self.pin_in.value() == self.error_type:
-            for i in range(len(self.error_value)/2)
-                Error.matrix[self.error_row][self.error_value[i]] = self.error_value[i+1]
-        
-            #for pin in self.pins_out:
-                #pin.on()
-            #self.active_error = True
+        if self.pin_in.value() == self.error_value:
+            for pin in self.pins_out:
+                pin.on()
+            self.active_error = True
         else:
             for pin in self.pins_out:
                 pin.off()
@@ -68,7 +60,7 @@ class Error:
             
     def check_analog(self):
         analog_value = self.pin_in.read_u16()
-        if analog_value >= self.error_type:
+        if analog_value >= self.error_value:
             self.pins_out.on()
             self.active_error = True
         else:

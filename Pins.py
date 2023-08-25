@@ -4,6 +4,15 @@
 Created on Tue Jul  4 16:01:32 2023
 
 """
+"""
+Probleme:
+    - Ein Errorsignal muss mehrere outputpins schalten -> Output-Liste für jede Instanz?
+    - Peristente Fehler: Wenn einmal getriggert soll es nicht mehr weiter geht
+    - Raspberry doku: Threshold digital input manipulierbar?!
+
+"""
+
+
 
 from machine import Pin, ADC
 

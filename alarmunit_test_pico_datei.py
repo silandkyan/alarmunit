@@ -8,19 +8,12 @@ Created on Tue Jul  4 16:21:15 2023
 
 from machine import Pin, ADC, Timer
 from Error_test import Error
-import pandas as pd 
 
-alm_matrix = []
 
 # Digital pins
 digital_input_pin_1 = Pin(22, Pin.IN)
 digital_error_pin_1 = Pin(17, Pin.OUT)
 digital_error_value_1 = 0
-
-
-d1_error_row = matrix[0]
-d1_value_error = [0,1,1, ...]
-d1_no_error_value = [...]
 
 #digital_input_pin_2 = Pin(20, Pin.IN)
 #digital_error_pin_2 = Pin(18, Pin.OUT)
@@ -38,7 +31,7 @@ analog_input_pin_1 = ADC(Pin(26))
 analog_error_threshold = 32000
 
 # Create instances Error class
-digital_error_1 = Error(digital_input_pin_1, digital_error_value_1, d1_error_row, d1_value_error, d1_no_error_value)
+digital_error_1 = Error(digital_input_pin_1, output_list, digital_error_value_1)
 #digital_error_2 = Error(digital_input_pin_2, digital_error_pin_2, digital_error_value_2)
 analog_error_1 = Error(analog_input_pin_1, analog_error_pin_1, analog_error_threshold)
 
@@ -47,7 +40,7 @@ analog_error_1 = Error(analog_input_pin_1, analog_error_pin_1, analog_error_thre
 def timer_callback(timer):
     # Check for digital error
     digital_error_1.check_digital()
-    digital_error_2.check_digital()
+    #digital_error_2.check_digital()
 
     # Check for analog error
     analog_error_1.check_analog()
