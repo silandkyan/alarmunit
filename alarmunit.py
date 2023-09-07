@@ -6,55 +6,55 @@ Created on Tue Jul  4 16:21:15 2023
 @author: pgross
 """
 from time import time
-from machine import Pin, Timer, ADC
+from machine import Pin, Timer, ADC, PWM
 from Alarm import Alarm
+from mcp_pin_class import mcp_pin
+from buzzer_class import buzzer
 
 
-<<<<<<< HEAD
-# Digital pins
-digital_input_pin_1 = Pin(22, Pin.IN)
-digital_error_pin_1 = Pin(17, Pin.OUT)
-digital_error_value_1 = 0
+### INITIALIZE I2C BUS ###
+# creating bus-instance
+i2c = machine.I2C(0, scl=machine.Pin(5), sda=machine.Pin(4), freq = 100000)
 
-#digital_input_pin_2 = Pin(20, Pin.IN)
-#digital_error_pin_2 = Pin(18, Pin.OUT)
-#digital_error_value_2 = 0
+# define device address on i2c-bus
+device = 0x20
 
-analog_error_pin_1 = Pin(18, Pin.OUT)
-
-no_errors_pin = Pin(16, Pin.OUT)
-
-# Analog input pins
-analog_input_pin_1 = ADC(Pin(26))
-#analog_input_pin_2 = ADC(Pin(27))
-=======
 ### PINS ###
 # Input Pins
-pin1 = Pin(16, Pin.IN)
-pin2 = Pin(17, Pin.IN)
+pin_dig1 = Pin(16, Pin.IN)
+pin_dig2 = mcp_pin(i2c, device, 'b0', 'IN')
+pin_dig3 = mcp_pin(i2c, device, 'b7', 'IN')
 pin_analog = ADC(Pin(26))
->>>>>>> main
 analog_error_threshold = 32000
 
 # Output Pins
-led1 = Pin(19, Pin.OUT)
-led2 = Pin(20, Pin.OUT)
-led_analog = Pin(21, Pin.OUT)
-
+led_dig1 = mcp_pin(i2c, device, 'a7', 'OUT')
+led_dig2 = Pin(15, Pin.OUT)
+led_dig3 = mcp_pin(i2c, device, 'a5', 'OUT')
+led_analog = mcp_pin(i2c, device, 'a6', 'OUT')
+buzzer = buzzer(PWM(Pin(14)),500, 200, Alarm.Action('L3', led_analog, norm_out=0, delay = 3, persistent=True))
 
 ### CREATE ALARM CLASS ###
 A = Alarm()
 
+### ACTIONS ### 
+L1 = A.Action('L1', led_dig1, norm_out=0)
+L2 = A.Action('L2', led_dig2, norm_out=0, delay = 3, persistent=True)
+L3 = A.Action('L3', led_dig3, norm_out=0)
+L4 = A.Action('L4', led_analog, norm_out=0, delay = 3, persistent=True)
+L5 = A.Action('L5', buzzer, norm_out=0, delay = 3, persistent=True)
 
-### ACTIONS ###
-L1 = A.Action('L1', led1, norm_out=0)
-L2 = A.Action('L2', led2, norm_out=0, persistent=False, delay=2)
-L3 = A.Action('L3', led_analog, norm_out=0)
+
 
 
 ### SENSORS ###
-S1 = A.Sensor('S1', pin1, 'digital', norm_val=1, actions=[L1, L2])
-S_adc = A.Sensor('S_adc', pin_analog, 'analog', analog_error_threshold, actions=[L3, L2])
+#S1 = A.Sensor('S1', pin_dig1, 'digital', norm_val=1, actions=[L1])
+
+S2 = A.Sensor('S2', pin_dig2, 'digital', norm_val=1, actions=[L2])
+
+S3 = A.Sensor('S3', pin_dig3, 'digital', norm_val=1, actions=[L3])
+
+S_adc = A.Sensor('S_adc', pin_analog, 'analog', analog_error_threshold, actions=[L1, L4, L5])
 
 
 ### TIMER CALLBACK FUNCTION ###
