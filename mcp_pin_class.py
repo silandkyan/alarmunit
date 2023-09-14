@@ -70,16 +70,17 @@ class mcp_pin:
         '''compares mask-byte via bitwise-AND with byte at register-address of bank-A or B depending on which is set to 'IN'.'''
         try:
             value = self.i2c.readfrom_mem(self.device_addr, self.regist_addr, 1) # acquire first byte from register
-            mask = 1 << self.pin
-            #print(value)
-            if value[0] & mask: # returns no error if value[0] and instance.pin share set bit on same position
-                # no error
-                return 1 # TODO: return self.norm_val should get taken, works otherwise only for norm_val = 1
-                # return self.nonc
+            mask = 1 << self.pin 
+            if value[0] & mask: # check if for one pair of bits from value[0] and mask the AND-condition is true 
+                if self.nonc == 1: # return value for check digital function following instance.nonc argument 
+                    return 1
+                elif self.nonc == 0:
+                    return 0
             else:
-                # error
-                return 0 # abs(self.norm_val-1)
-                # return abs(self.nonc-1)
+                if self.nonc == 1:
+                    return 0
+                elif self.nonc == 0:
+                    return 1
         except OSError as e:
             print(f"Error: I/O-access in in value(): {e}") # in case of trouble of communication between mcp and pico
     
