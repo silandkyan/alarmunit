@@ -1,21 +1,20 @@
-from Alarm import Alarm
-from utime import sleep
+from machine import Timer
 
 class buzzer:
-    
-    def __init__(self, pin, freq_1, freq_2, on_off):
-        self.on_off = on_off
+    index = 0 # class.index is used to switch frequencies in melody
+    '''class for adapting passive buzzer to machine functions.
+       Special implementation for module Alarm.
+       taken arguments:
+           pin: syntax: PWM(Pin(pin)); type = int; uses machine.PWM for pinmode
+           freq1/2: type = int; takes frequence in Hz for melody'''
+    def __init__(self, pin, freq1, freq2):
         self.pin = pin
-        self.freq = [freq_1, freq_2]
+        self.melody = [freq1, freq2]
         
     def on(self):
-        if self.on_off.triggers[0] == self.on_off.actual_state:
-            for f in self.freq:
-                self.pin.duty_u16(10000)
-                self.pin.freq(f)
-                sleep(0.5)
-        else:
-            self.off()
+        buzzer.index = ~buzzer.index # changes frequency after each iteration/callback from alarmunit
+        self.pin.duty_u16(10000) # setup for buzzer 
+        self.pin.freq(self.melody[abs(buzzer.index)]) # play selected frequency
         
     def off(self):
         self.pin.deinit()

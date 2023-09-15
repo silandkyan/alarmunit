@@ -32,29 +32,30 @@ led_dig1 = mcp_pin(i2c, device, 'a7', 'OUT')
 led_dig2 = Pin(15, Pin.OUT)
 led_dig3 = mcp_pin(i2c, device, 'a5', 'OUT')
 led_analog = mcp_pin(i2c, device, 'a6', 'OUT')
-buzzer = buzzer(PWM(Pin(14)),500, 200, Alarm.Action('L3', led_analog, norm_out=0, delay = 3, persistent=True))
+buzzer_1 = buzzer(PWM(Pin(14)), 600, 200)
+
 
 ### CREATE ALARM CLASS ###
 A = Alarm()
 
 ### ACTIONS ### 
-L1 = A.Action('L1', led_dig1, norm_out=0)
+L1 = A.Action('L1', led_dig1, norm_out=1)
 L2 = A.Action('L2', led_dig2, norm_out=0, delay = 3, persistent=True)
 L3 = A.Action('L3', led_dig3, norm_out=0)
 L4 = A.Action('L4', led_analog, norm_out=0, delay = 3, persistent=True)
-L5 = A.Action('L5', buzzer, norm_out=0, delay = 3, persistent=True)
+L5 = A.Action('L5', buzzer_1, norm_out=0)
 
 
 
 
 ### SENSORS ###
-#S1 = A.Sensor('S1', pin_dig1, 'digital', norm_val=1, actions=[L1])
+S1 = A.Sensor('S1', pin_dig1, 'digital', norm_val=0, actions=[L1, L5])
 
 S2 = A.Sensor('S2', pin_dig2, 'digital', norm_val=1, actions=[L2])
 
-S3 = A.Sensor('S3', pin_dig3, 'digital', norm_val=1, actions=[L3])
+S3 = A.Sensor('S3', pin_dig3, 'digital', norm_val=0, actions=[L3, L5])
 
-S_adc = A.Sensor('S_adc', pin_analog, 'analog', analog_error_threshold, actions=[L1, L4, L5])
+S_adc = A.Sensor('S_adc', pin_analog, 'analog', analog_error_threshold, actions=[L4])
 
 
 ### TIMER CALLBACK FUNCTION ###

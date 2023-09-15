@@ -61,9 +61,9 @@ class Alarm:
                 print('Wrong input type!')
             
         def check_digital(self):
-            value = self.pin_in.value()
-            if value is not None:
-                if value != self.norm_val:
+            val = self.pin_in.value()
+            if val is not None:
+                if val != self.norm_val:
                     self.write_to_actions(1)
                     print('Error detected!')
                 else:
@@ -163,6 +163,6 @@ class Alarm:
             if self.persistent == True:
                 self.triggers[0] = self.actual_state
                 print('set persistent')
-                
+        
 ###
          

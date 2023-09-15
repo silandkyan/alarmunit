@@ -13,15 +13,13 @@ class mcp_pin:
                (Note: bank-A counts pins from right to left, bank-B from left to right!
                ->see MCP-datasheet)
            io: type = str; takes 'OUT' for output and 'IN' for input on corresponding bank
-           (Note: the given string sets ALL pins on one bank to in- or output)
-           nonc: type = int; optional argument for input pins. 1 for normally opened, 0 for normally closed'''
-    def __init__(self, i2c, device_addr, string, io, nonc = None):
+           (Note: the given string sets ALL pins on one bank to in- or output)'''
+    def __init__(self, i2c, device_addr, string, io):
         self.i2c = i2c
         self.device_addr = device_addr
         self.bank = string[0]
         self.pin = int(string[1])
         self.io = io
-        self.nonc = nonc
         self.setup()
         
     def setup(self):
@@ -69,18 +67,12 @@ class mcp_pin:
     def value(self):
         '''compares mask-byte via bitwise-AND with byte at register-address of bank-A or B depending on which is set to 'IN'.'''
         try:
-            value = self.i2c.readfrom_mem(self.device_addr, self.regist_addr, 1) # acquire first byte from register
+            val = self.i2c.readfrom_mem(self.device_addr, self.regist_addr, 1) # acquire first byte from register
             mask = 1 << self.pin 
-            if value[0] & mask: # check if for one pair of bits from value[0] and mask the AND-condition is true 
-                if self.nonc == 1: # return value for check digital function following instance.nonc argument 
-                    return 1
-                elif self.nonc == 0:
-                    return 0
+            if val[0] & mask: # check if for one pair of bits from value[0] and mask the AND-condition is true 
+                return 1
             else:
-                if self.nonc == 1:
-                    return 0
-                elif self.nonc == 0:
-                    return 1
+                return 0
         except OSError as e:
             print(f"Error: I/O-access in in value(): {e}") # in case of trouble of communication between mcp and pico
     
