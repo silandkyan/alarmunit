@@ -3,14 +3,14 @@ class mcp_pin:
     devices = [] # classvariable for listing all devices connected to the i2c-bus  
     states = [] # classvariable for to save states of banks on each device 
     '''class for adapting i2c syntax of MCP23017 device to micropython,
-       to provide compatibility with machine functions. 
+       to provide compatibility with machine functions. Use of multiple MCP-devices is supported.
        taken arguments:
            i2c: type = hex; takes chosen i2c-bus
            device_addr: type = hex; hardware configuration for i2c device address
            string[0]:
                bank: type = str; 'a' or 'b' for bank-A/B of MCP23017
            string[1]:
-               pin: type = str; decimal number for GPIO-A or B register (takes values from 0 to 7)
+               pin: type = str; decimal number for GPIO-A/B register (takes values from 0 to 7)
                (Note: bank-A counts pins from right to left, bank-B from left to right!
                ->see MCP-datasheet)
            io: type = str; takes 'OUT' for output and 'IN' for input on corresponding bank
