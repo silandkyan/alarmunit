@@ -28,7 +28,8 @@ device_2 = 0x21
 # Input Pins
 pin_mcp_dig1 = mcp_pin(i2c, device_1, 'a7', 'IN')
 pin_mcp_dig2= mcp_pin(i2c, device_1, 'b0', 'IN')
-# pin_pico1 = Pin(16, Pin.IN)
+pin_reset_persistent = Pin(11, Pin.IN)
+pin_ignore_sensors = Pin(12, Pin.IN)
 # pin_pico_analog = ADC(Pin(26))
 # analog_error_threshold = 32000
 
@@ -52,19 +53,21 @@ L2 = A.Action('L2', led_mcp_dig2, norm_out=0)
 L5 = A.Action('L5', buzzer_1, norm_out=0, delay = 3, persistent = True)
 L6 = A.Action('L6', buzzer_2, norm_out=0, delay = 3, persistent = True)
 
-
 ### SENSORS ###
 S1 = A.Sensor('S1', pin_mcp_dig1, 'digital', norm_val=1, actions=[L1, L5])
 S2 = A.Sensor('S2', pin_mcp_dig2, 'digital', norm_val=1, actions=[L2, L6])
 #S3 = A.Sensor('S3', pin_pico1, 'digital', norm_val=0, actions=[L4])
 #S_adc = A.Sensor('S_adc', pin_pico_analog, 'analog', analog_error_threshold, actions=[L3, L6])
 
+M1 = A.Master('M1', pin_reset_persistent, norm_val=0, mode='reset')
+M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', sensor_set=[S1, S2])
 
 ### TIMER CALLBACK FUNCTION ###
 def timer_callback(timer):
     A.reset_action_triggers()
     A.check_sensors()
     A.run_actions()
+    A.admin_operation()
     # Sleep is NOT needed in this implementation!
     print('time: ', time())
     

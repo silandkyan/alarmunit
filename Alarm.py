@@ -10,6 +10,7 @@ from machine import Timer
 class Alarm:
     sensors = set()
     actions = set()
+    masters = set()
     
     @classmethod
     def check_sensors(cls):
@@ -29,6 +30,11 @@ class Alarm:
             action.eval_state()
             action.prepare_output()
             action.set_output()
+            
+    @classmethod
+    def admin_operation(cls):
+        for master in cls.masters:
+            master.reset_or_ignore()
 
     class Sensor:
         def __init__(self, name, pin_in, input_type, norm_val, actions):
@@ -80,6 +86,7 @@ class Alarm:
         def write_to_actions(self, value):
             for action in self.actions:
                 action.triggers.append(value)
+                #print(action.triggers)
                 
                 
     class Action:
@@ -163,6 +170,36 @@ class Alarm:
             if self.persistent == True:
                 self.triggers[0] = self.actual_state
                 print('set persistent')
+                
+    class Master:
+        '''class for reseting all persistent alarms and for ignoring certain groups of alarms
+        -> NOTE: resetting alarms or ignoring a set of alarms is only possible if no alarm is CURRENTLY ACTIVE!!'''
         
+        def __init__(self, name, pin_in, norm_val, mode, sensor_set=None):
+            self.name = name
+            self.pin_in = pin_in
+            self.norm_val = norm_val
+            self.mode = mode
+            self.sensor_set = sensor_set # list of alarms desired to be IGNORED!
+            Alarm.masters.add(self)
+        
+        def reset_or_ignore(self):
+            val = self.pin_in.value()
+            if val is not None:
+                if val != self.norm_val: # check if a button/switch contradicts the normal value
+                    if self.mode == 'reset': # check which mode is active 
+                        for action in Alarm.actions: # reset every persistent output as long as errors themselves are resolved!
+                            action.triggers[0] = 0
+                        print('reset all persistent errors!')
+                    elif self.mode == 'ignore':
+                        Alarm.sensors = set(Alarm.sensors) ^ set(self.sensor_set) # take difference of both sets -> ignore sensors in sensor_set for next iteration
+                        for sensor in self.sensor_set:
+                            print('ignoring sensor:',sensor.name,'with actions:') # print every sensor and its actions which will be ignored in next iteration
+                            for action in sensor.actions: # reset persistent outputs of ignorable sensors 
+                                action.triggers[0] = 0 
+                                print(action.name) 
+            elif val == self.norm_val:
+                pass
+                           
 ###
          
