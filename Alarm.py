@@ -55,6 +55,7 @@ class Alarm:
             self.norm_val = norm_val
             self.actions = actions
             Alarm.sensors.add(self)
+            Alarm.sensors_all = Alarm.sensors # store set of all sensors for ignore_sensors()
         
         def check_sensor(self):
             '''Checks the current sensor state (good=0, bad=1) and writes
@@ -172,34 +173,54 @@ class Alarm:
                 print('set persistent')
                 
     class Master:
-        '''class for reseting all persistent alarms and for ignoring certain groups of alarms
-        -> NOTE: resetting alarms or ignoring a set of alarms is only possible if no alarm is CURRENTLY ACTIVE!!'''
-        
         def __init__(self, name, pin_in, norm_val, mode, sensor_set=None):
+            '''Class for reseting all persistent alarm-outputs and for ignoring
+            certain groups of Sensor-instances along with their alarm-outputs.
+            Parameters:
+            name: str; descriptive name
+            pin_in: machine.Pin object (or mcp_pin_class object)
+            normal_val: int; normal value of pin_in: 0 or 1
+            mode: str; either 'reset': for resetting all persistent outputs
+                or 'ignore': for ingore given set of sensors
+            sensor_set: list; optional argument for mode: 'ignore',
+                takes Sensor-class instances which will be ignored in next iteration(s)'''
             self.name = name
             self.pin_in = pin_in
             self.norm_val = norm_val
             self.mode = mode
-            self.sensor_set = sensor_set # list of alarms desired to be IGNORED!
+            self.sensor_set = sensor_set
             Alarm.masters.add(self)
         
         def reset_or_ignore(self):
+            if self.mode == 'reset':
+                self.reset_persistent()
+            elif self.mode == 'ignore':
+                self.ignore_sensors()
+            
+        def reset_persistent(self):
+            '''resets all persistent outputs, but only if errors themselves are resolved!.'''
             val = self.pin_in.value()
             if val is not None:
-                if val != self.norm_val: # check if a button/switch contradicts the normal value
-                    if self.mode == 'reset': # check which mode is active 
-                        for action in Alarm.actions: # reset every persistent output as long as errors themselves are resolved!
+                if val != self.norm_val: # check if switch state contradicts the normal value
+                    for action in Alarm.actions: # reset every persistent output 
                             action.triggers[0] = 0
-                        print('reset all persistent errors!')
-                    elif self.mode == 'ignore':
-                        Alarm.sensors = set(Alarm.sensors) ^ set(self.sensor_set) # take difference of both sets -> ignore sensors in sensor_set for next iteration
-                        for sensor in self.sensor_set:
-                            print('ignoring sensor:',sensor.name,'with actions:') # print every sensor and its actions which will be ignored in next iteration
-                            for action in sensor.actions: # reset persistent outputs of ignorable sensors 
-                                action.triggers[0] = 0 
-                                print(action.name) 
-            elif val == self.norm_val:
-                pass
-                           
+                    print('reset all persistent errors!')
+                
+        def ignore_sensors(self):
+            '''ignores given set of sensors (thus their actions) for next iteration(s),
+            resets persistent outputs of ignorable sensors but only if errors themselves are resolved!.'''
+            val = self.pin_in.value()
+            if val is not None:
+                if val != self.norm_val: # check if switch state contradicts the normal value
+                    Alarm.sensors = set(Alarm.sensors) - set(self.sensor_set) # set-operation: ignore sensors in self.sensor_set for next iteration(s)
+                    for sensor in self.sensor_set:
+                        print('ignoring sensor:',sensor.name,'with actions:') # print every sensor and its actions which will be ignored in next iteration(s)
+                        for action in sensor.actions: 
+                            action.triggers[0] = 0 # reset persistent outputs of ignorable sensors 
+                            print(action.name)
+                elif val == self.norm_val:
+                    Alarm.sensors = Alarm.sensors_all # controll all sensors again 
+                    
+
 ###
          

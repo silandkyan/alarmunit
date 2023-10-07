@@ -60,14 +60,14 @@ S2 = A.Sensor('S2', pin_mcp_dig2, 'digital', norm_val=1, actions=[L2, L6])
 #S_adc = A.Sensor('S_adc', pin_pico_analog, 'analog', analog_error_threshold, actions=[L3, L6])
 
 M1 = A.Master('M1', pin_reset_persistent, norm_val=0, mode='reset')
-M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', sensor_set=[S1, S2])
+M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', sensor_set=[S1])
 
 ### TIMER CALLBACK FUNCTION ###
 def timer_callback(timer):
+    A.admin_operation()
     A.reset_action_triggers()
     A.check_sensors()
     A.run_actions()
-    A.admin_operation()
     # Sleep is NOT needed in this implementation!
     print('time: ', time())
     
