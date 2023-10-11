@@ -27,31 +27,36 @@ device_2 = 0x21
 
 # Input Pins
 pin_mcp_dig1 = mcp_pin(i2c, device_1, 'a7', 'IN')
-pin_mcp_dig2= mcp_pin(i2c, device_1, 'b0', 'IN')
-pin_reset_persistent = Pin(11, Pin.IN)
-pin_ignore_sensors = Pin(12, Pin.IN)
+pin_mcp_dig2 = mcp_pin(i2c, device_1, 'b0', 'IN')
+pin_reset_persistent = mcp_pin(i2c, device_1, 'a6', 'IN')
+pin_ignore_sensors = mcp_pin(i2c, device_1, 'b1', 'IN')
 # pin_pico_analog = ADC(Pin(26))
 # analog_error_threshold = 32000
 
 # Output Pins
 led_mcp_dig1 = mcp_pin(i2c, device_2, 'a7', 'OUT')
+led_mcp_ok1 = mcp_pin(i2c, device_2, 'a5', 'OUT')
 led_mcp_dig2 = mcp_pin(i2c, device_2, 'b0', 'OUT')
+led_mcp_ok2 = mcp_pin(i2c, device_2, 'a6', 'OUT')
+led_mcp_all_ok = mcp_pin(i2c, device_2, 'a4', 'OUT')
 # led_mcp_analog = mcp_pin(i2c, device_1, 'a5', 'OUT')
 # led_pico1 = Pin(15, Pin.OUT)
 buzzer_1 = buzzer(PWM(Pin(14)), 500, 200)
+led_mcp_ok3 = mcp_pin(i2c, device_2, 'a3', 'OUT')
 buzzer_2 = buzzer(PWM(Pin(13)), 600, 100)
+led_mcp_ok4 = mcp_pin(i2c, device_2, 'a2', 'OUT')
 
 
 ### CREATE ALARM CLASS ###
 A = Alarm()
 
 ### ACTIONS ### 
-L1 = A.Action('L1', led_mcp_dig1, norm_out=0)
-L2 = A.Action('L2', led_mcp_dig2, norm_out=0)
+L1 = A.Action('L1', led_mcp_dig1, norm_out=0, pin_ok=led_mcp_ok1, pin_all_ok=led_mcp_all_ok)
+L2 = A.Action('L2', led_mcp_dig2, norm_out=0, pin_ok=led_mcp_ok2, pin_all_ok=led_mcp_all_ok)
 # L3 = A.Action('L3', led_mcp_analog, norm_out=0, delay = 3, persistent = True)
 # L4 = A.Action('L4', led_pico1, norm_out=0)
-L5 = A.Action('L5', buzzer_1, norm_out=0, delay = 3, persistent = True)
-L6 = A.Action('L6', buzzer_2, norm_out=0, delay = 3, persistent = True)
+L5 = A.Action('L5', buzzer_1, norm_out=0, pin_ok=led_mcp_ok3, pin_all_ok=led_mcp_all_ok, delay = 3, persistent = True)
+L6 = A.Action('L6', buzzer_2, norm_out=0, pin_ok=led_mcp_ok4, pin_all_ok=led_mcp_all_ok, delay = 3, persistent = True)
 
 ### SENSORS ###
 S1 = A.Sensor('S1', pin_mcp_dig1, 'digital', norm_val=1, actions=[L1, L5])
@@ -64,9 +69,9 @@ M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', sensor_set=[S
 
 ### TIMER CALLBACK FUNCTION ###
 def timer_callback(timer):
-    A.admin_operation()
     A.reset_action_triggers()
     A.check_sensors()
+    A.admin_operation()
     A.run_actions()
     # Sleep is NOT needed in this implementation!
     print('time: ', time())
