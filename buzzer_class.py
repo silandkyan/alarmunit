@@ -1,4 +1,4 @@
-from machine import Timer
+import machine
 
 class buzzer:
     '''class for adapting passive buzzer to machine functions.
@@ -15,8 +15,15 @@ class buzzer:
         self.index = ~self.index # changes frequency after each iteration/callback from alarmunit
         self.pin.duty_u16(10000) # setup for buzzer
         self.pin.freq(self.melody[abs(self.index)]) # play selected frequency
-        
+
+    def value(self):
+        val = self.pin.duty_u16()
+        if val == 10000:
+            return 1
+        elif val == 0:
+            return 0
+    
     def off(self):
-        self.pin.deinit()
-        
+        self.pin.duty_u16(0)
+
         
