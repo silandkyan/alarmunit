@@ -23,20 +23,29 @@ class Alarm:
         prepare a new iteration.'''
         for action in cls.actions:
             action.triggers = action.triggers[0:1]
-        
+
     @classmethod
     def run_actions(cls):
         for action in cls.actions:
             action.eval_state()
-            action.prepare_output()
+            action.prepare_output()  
             action.set_output()
             
-        if any(item == 1 for item in cls.Action.val_out): # check all no-error-LED's for status given by cls.val_out in Action 
-            cls.Action.all_ok = False # if any of them is on LOW, cls.all_ok is False 
-        else:
-            cls.Action.all_ok = True
-        cls.Action.val_out = [] # clear list of no-error LED status for next iteration
-        
+        for action in cls.all_actions: # iterate over all defined instances of Action 
+            if action.pin_ok is not None: 
+                val = action.pin_out.value() # read value of self.pin_out
+                if val is not None:
+                    if val == action.norm_out: # actual value of self.pin_out is equal to self.norm_out
+                        action.pin_ok.on() # ok
+                    elif val != action.norm_out: # actual value of self.pin_out is not equal to self.norm_out
+                        action.pin_ok.off() # not ok
+            if action.pin_all_ok is not None:
+                if any(item == 1 for item in cls.Action.all_ok): # check for possible error yielded from self.set_output()
+                    action.pin_all_ok.off() # there is at least one error: not ok
+                else:
+                    action.pin_all_ok.on() # there is no error: ok
+        cls.Action.all_ok = [] # clear list of no-error LED status for next iteration
+           
     @classmethod
     def admin_operation(cls):
         for master in cls.masters:
@@ -61,7 +70,7 @@ class Alarm:
             self.norm_val = norm_val
             self.actions = actions
             Alarm.sensors.add(self)
-            Alarm.all_sensors = Alarm.sensors
+
             
 
         def check_sensor(self):
@@ -93,41 +102,39 @@ class Alarm:
             
         def write_to_actions(self, value):
             for action in self.actions:
-                action.triggers.append(value)                 
+                action.triggers.append(value)
+
             
     class Action:
-        val_out = [] # cls.val_out is list for saving status of no-error-LED's 
-        all_ok = True # cls.all_ok is True or False depending on whether there are errors or not. Default is no error = True!
-        def __init__(self, name, pin_error, norm_out, pin_ok, pin_all_ok, delay=None, persistent=False):
+        all_ok = [] # cls.val_out is list for saving status of no-error-LED's 
+        def __init__(self, name, pin_out, norm_out, pin_ok=None, pin_all_ok=None, delay=None, persistent=False):
             '''Class for managing Action objects and their output behaviour.
                 name: str; descriptive name
-                pin_error: Pin object (from the machine module of Micropython) 
+                pin_out: Pin object (from the machine module of Micropython) 
                     for the output signal; must be digital pin.
-                norm_out: 1 (on) or 0 (off); signal written to pin_error if 
+                norm_out: 1 (on) or 0 (off); signal written to pin_out if 
                     state is normal.
-                pin_ok: Pin object; status depends on status of pin_error
-                pin_all_ok: Pin object; common pin for all instances of Action
+                pin_ok: Pin object; status depends on status of pin_out; optional
+                pin_all_ok: Pin object; common pin for all instances of Action; optional
                 delay: None or time in sec to wait before out signal switches 
                     to error mode; optional.
                 persistent: True or False; Error object is treated as 
                     persistent or not; optional.'''
             self.name = name
-            self.pin_error = pin_error
+            self.pin_out = pin_out
             self.pin_ok = pin_ok
             self.pin_all_ok = pin_all_ok
             self.norm_out = norm_out
-            self.err_out = abs(self.norm_out - 1) # TODO: not needed?
             self.delay = delay
             self.persistent = persistent
             self.triggers = [0] # list of states of connected sensors; 0=good, 1=bad
             self.curr_state = 0 # state during current iteration of main loop
             self.last_state = 0 # state during last iteration of main loop
-            self.actual_state  = 0 # state actually written to pin_error
-            self.state_list = [self.norm_out]
+            self.actual_state  = 0 # state actually written to pin_out
             Alarm.actions.add(self)
-            
-            
-            
+            Alarm.all_actions = Alarm.actions
+        
+
         def eval_state(self):
             '''Checks if any connected sensor detected an error in the current
             iteration. If yes, the Action object switches to an internal error state.'''
@@ -136,7 +143,8 @@ class Alarm:
                 self.curr_state = 1
             else:
                 self.curr_state = 0
-            
+
+                    
         def prepare_output(self):
             '''Prepares the Action object for setting the correct output value.
             If no delay timer is specified, this happens instantly. Otherwise,
@@ -145,7 +153,7 @@ class Alarm:
                 self.actual_state = self.curr_state
                 self.set_persistent()
             else:
-                # no error:
+                # no error
                 if self.curr_state == 0 and self.last_state == 0:
                     self.actual_state = self.curr_state
                 # new error, set timer
@@ -155,63 +163,29 @@ class Alarm:
                 elif self.curr_state == 0 and self.last_state == 1:
                     self.acttimer.deinit() 
                     print('timer off')
-            self.state_list = self.state_list[0:1]
-            self.state_list.append(self.actual_state)
-                    
+          
+          
         def set_output(self):
-            '''Sets proper output value for errors depending on normal value and Action state.
-            self.norm_out is getting compared with self.actual_val, self.pin_error gets set accordingly.
-            self.pin_ok is getting set depending on value of self.error_pin, values for self.pin_all_ok
-            get appended to cls.Action.val_out.'''
-            # if self is getting ignored:
-            if self in Alarm.Master.ignore_list:
-                if self.state_list == [1, 1]: # error occured, self.norm_out==1, set self.pin_error to HIGH
-                    self.pin_error.on()
-                    self.operate_ok_led(abs(self.norm_out-1)) # turn down self.pin_ok 
-                    Alarm.Action.val_out.append(1) # append error-value to cls.Action.val_out
-                elif self.state_list == [1, 0]: # no error occured, self.norm_out==1, set self.pin_error to HIGH
-                    self.pin_error.on()
-                    self.operate_ok_led(self.norm_out) # turn on self.pin_ok
-                    Alarm.Action.val_out.append(0) # append no-error-value to cls.Action.val_out
-                elif self.state_list == [0, 1]: # error occured, self.norm_out==0, set self.pin_error to LOW
-                    self.pin_error.off()
-                    self.operate_ok_led(abs(self.norm_out-1))
-                    Alarm.Action.val_out.append(1) 
-                elif self.state_list == [0, 0]: # no error occured, self.norm_out==0, set self.pin_error to LOW
-                    self.pin_error.off()
-                    self.operate_ok_led(self.norm_out)
-                    Alarm.Action.val_out.append(0) 
-            # Else, if self not ignored: 
-            else:
-                if self.state_list == [1, 1]: # error occured, self.norm_out==1, set self.pin_error to LOW
-                    self.pin_error.off()
-                    Alarm.Action.val_out.append(1)
-                elif self.state_list == [1, 0]: # no error occured, self.norm_out==1, set self.pin_error to HIGH
-                    self.pin_error.on()
-                    Alarm.Action.val_out.append(0)
-                elif self.state_list == [0, 1]: # error occured, self.norm_out==0, set self.pin_error to HIGH
-                    self.pin_error.on()
-                    Alarm.Action.val_out.append(1)
-                elif self.state_list == [0, 0]: # no error occured, self.norm_out==0, set self.pin_error to LOW
-                    self.pin_error.off()
-                    Alarm.Action.val_out.append(0)
-                self.operate_ok_led(self.norm_out) # operate on self.pin_ok according to self.pin_error.value() 
-            # set self.pin_all_ok according to output-cls-var evaluated in classmethod cls.run_actions:
-            if Alarm.Action.all_ok == True: 
-                self.pin_all_ok.on()
-            elif Alarm.Action.all_ok == False:
-                self.pin_all_ok.off()
-                
-        def operate_ok_led(self, mode):
-            '''function to set value of self.pin_ok depending on self.pin_error.value()
-            for decoupling from class, to improve safety.
-            Given argument is mode: int; 0 or 1.'''
-            val = self.pin_error.value()
-            if val is not None:
-                if val == mode:
-                    self.pin_ok.on()
-                elif val != mode:
-                    self.pin_ok.off()
+            '''set right pin-status to pin_out depending on self.norm_out, if error.
+            For errors append 1 in cls.Action.all_ok list, if no error append 0.
+            cls.Action.all_ok gets checked and then cleared every iteration in cls.run_actions().'''
+            # error 
+            if self.actual_state == 1:
+                if self.norm_out == 1:
+                    self.pin_out.off()
+                    Alarm.Action.all_ok.append(1)
+                elif self.norm_out == 0:
+                    self.pin_out.on()
+                    Alarm.Action.all_ok.append(1)
+            # no error
+            elif self.actual_state == 0:
+                if self.norm_out == 1:
+                    self.pin_out.on()
+                    Alarm.Action.all_ok.append(0)
+                elif self.norm_out == 0:
+                    self.pin_out.off()
+                    Alarm.Action.all_ok.append(0)
+                    
                     
         def set_timer(self):
             '''Creates an internal Timer object for the output delay.'''
@@ -232,8 +206,9 @@ class Alarm:
                 
                 
     class Master:
-        ignore_list = [] # cls.ignore_list is list for ignorable sensors: their outputs will be held back in next iteration(s)
-        def __init__(self, name, pin_in, norm_val, mode, sensor_set=None):
+        ignore_set = set() # cls.ignore_set is list for ignorable sensors: their outputs will be held back in next iteration(s)
+        iteration_state = 'check'
+        def __init__(self, name, pin_in, norm_val, mode, action_set=None):
             '''Class for reseting all persistent alarm-outputs and for ignoring
             certain groups of Sensor-instances along with their alarm-outputs.
             Parameters:
@@ -242,35 +217,41 @@ class Alarm:
             normal_val: int; normal value of pin_in: 0 or 1
             mode: str; either 'reset': for resetting all persistent outputs
                 or 'ignore': for ingore given set of sensors
-            sensor_set: list; optional argument for mode: 'ignore',
-                takes Sensor-class instances which will be ignored in next iteration(s)'''
+            action_set: list; optional argument for mode: 'ignore',
+                takes Action-class instances which will be ignored in next iteration(s)'''
             self.name = name
             self.pin_in = pin_in
             self.norm_val = norm_val
             self.mode = mode
-            self.sensor_set = sensor_set
+            self.action_set = action_set
             Alarm.masters.add(self)
+            
         
         def reset_or_ignore(self):
             if self.mode == 'reset':
                 val = self.pin_in.value()
                 if val is not None:
                     if val != self.norm_val: # check if switch state contradicts the normal value
-                        for sensor in Alarm.all_sensors:
-                            for action in sensor.actions:
-                                action.triggers = [0, 0]
+                        for action in Alarm.all_actions:
+                            action.triggers = [0, 0]
                         print('all alarm-outputs reset!')
                 
             elif self.mode == 'ignore':
                 val = self.pin_in.value()
                 if val is not None:
                     if val != self.norm_val: # check if switch state contradicts the normal value
-                        for sensor in self.sensor_set:
-                            for action in sensor.actions:
-                                Alarm.Master.ignore_list.append(action)  # ignore actions of sensors in self.sensor_set 
-                        print('ignoring sensor(s):',list(map(lambda instance: instance.name, self.sensor_set))) # print every sensor which will be ignored in next iteration
+                        for action in self.action_set:
+                            Alarm.Master.ignore_set.add(action)
+                            action.actual_state = 0
+                            action.set_output()
+                        Alarm.actions = Alarm.actions - Alarm.Master.ignore_set
+                        print('ignoring action(s):',list(map(lambda instance: instance.name, self.action_set))) # print every sensor which will be ignored in next iteration
                     elif val == self.norm_val:
-                        Alarm.Master.ignore_list = [] # reset list of ignorable sensors if switch is on normal status
+                        for action in Alarm.Master.ignore_set:
+                            action.triggers = [0, 0]
+                            action.eval_state()
+                        Alarm.Master.ignore_set.clear()
+                        Alarm.actions = Alarm.all_actions # reset list of ignorable sensors if switch is on normal status
                 
 ###
          
