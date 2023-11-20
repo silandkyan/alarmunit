@@ -67,8 +67,10 @@ S2 = A.Sensor('S2', pin_mcp_dig2, 'digital', norm_val=1, actions=[L1, L4, L6])
 #S3 = A.Sensor('S3', pin_pico1, 'digital', norm_val=0, actions=[L4])
 #S_adc = A.Sensor('S_adc', pin_pico_analog, 'analog', analog_error_threshold, actions=[L3, L6])
 
+set1 = [S1, S1.actions[2], S1.actions[0]] 
+
 M1 = A.Master('M1', pin_reset_persistent, norm_val=0, mode='reset')
-M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', action_set=[L1, L5])
+M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', action_list=[set1])
 
 ### TIMER CALLBACK FUNCTION ###
 def timer_callback(timer):
