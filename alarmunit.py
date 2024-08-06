@@ -63,14 +63,14 @@ L6 = A.Action('L6', buzzer_2, norm_out=0, delay = 3, persistent = True)
 
 ### SENSORS ###
 S1 = A.Sensor('S1', pin_mcp_dig1, 'digital', norm_val=1, actions=[L1, L3, L5])
-S2 = A.Sensor('S2', pin_mcp_dig2, 'digital', norm_val=1, actions=[L1, L4, L6])
+S2 = A.Sensor('S2', pin_mcp_dig2, 'digital', norm_val=1, actions=[L2, L4, L6])
 #S3 = A.Sensor('S3', pin_pico1, 'digital', norm_val=0, actions=[L4])
 #S_adc = A.Sensor('S_adc', pin_pico_analog, 'analog', analog_error_threshold, actions=[L3, L6])
 
-set1 = [S1, S1.actions[2], S1.actions[0]] 
+set1 = [S1, S1.actions[2], S1.actions[1]] 
 
-M1 = A.Master('M1', pin_reset_persistent, norm_val=0, mode='reset')
-M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', action_list=[set1])
+M1 = A.Master('M1', pin_reset_persistent, norm_val=0, mode='reset_all')
+M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', object_list=[set1])
 
 ### TIMER CALLBACK FUNCTION ###
 def timer_callback(timer):
