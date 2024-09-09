@@ -30,21 +30,8 @@ class Alarm:
         for action in cls.actions:
             action.eval_state()
             action.prepare_output()  
-            action.set_output() 
-#         for action in cls.actions: # iterate over all defined instances of Action 
-            if action.pin_ok is not None: 
-                val = action.pin_out.value() # read value of self.pin_out
-                if val is not None:
-                    if val == action.norm_out: # actual value of self.pin_out is equal to self.norm_out
-                        action.pin_ok.on() # ok
-                    elif val != action.norm_out: # actual value of self.pin_out is not equal to self.norm_out
-                        action.pin_ok.off() # not ok
-            if action.pin_all_ok is not None:
-                if any(item == 1 for item in cls.Action.all_ok): # check for possible error yielded from self.set_output()
-                    action.pin_all_ok.off() # there is at least one error: not ok
-                else:
-                    action.pin_all_ok.on() # there is no error: ok
-        cls.Action.all_ok = [] # clear list of no-error LED status for next iteration
+            action.set_output()
+            action.check_relais()
            
     @classmethod
     def admin_operation(cls):
@@ -105,19 +92,19 @@ class Alarm:
             actions = set(self.actions)
             if self in Alarm.Master.sensors: # should any action for this particular sensor be ignored
                 for action in (actions & Alarm.Master.actions): # for all actions in intersection of these sets
-                    Alarm.Action.all_ok.append(value)
                     action.triggers.append(0) # always append state for no error
+#                     Alarm.Action.all_ok.append(value)
                 for action in (actions - Alarm.Master.actions): # for rest of actions in self.actions which are not ignored
                     action.triggers.append(value) # append produced value from check functions
-                    Alarm.Action.all_ok.append(value) 
+#                     Alarm.Action.all_ok.append(value) 
             else: # if instance is not in cls.Master.sensors, proceed as usual
                 for action in actions:
                     action.triggers.append(value) # append produced value from check functions
-                    Alarm.Action.all_ok.append(value)
+#                     Alarm.Action.all_ok.append(value)
 
             
     class Action:
-        all_ok = [] # cls.all_ok is list for saving status of output pins  
+        all_ok = [0] # cls.all_ok is list for saving status of output pins  
         def __init__(self, name, pin_out, norm_out, pin_ok=None, pin_all_ok=None, delay=None, persistent=False):
             '''Class for managing Action objects and their output behaviour.
                 name: str; descriptive name
@@ -153,6 +140,8 @@ class Alarm:
                 self.curr_state = 1
             else:
                 self.curr_state = 0
+            if self.pin_all_ok is not None:
+                Alarm.Action.all_ok.append(self.curr_state)
                     
         def prepare_output(self):
             '''Prepares the Action object for setting the correct output value.
@@ -208,7 +197,24 @@ class Alarm:
             if self.persistent == True:
                 self.triggers[0] = self.actual_state
                 print('set persistent')
-                
+                if self.pin_all_ok is not None: # all ok is only ok if, there is no persistent relais error
+                    Alarm.Action.all_ok[0] = 1
+                    
+        def check_relais(self):
+            for self in Alarm.actions:
+                if self.pin_ok is not None: 
+                    val = self.pin_out.value() # read value of self.pin_out
+                    if val is not None: # avoid coercing over this if statement to fast?!
+                        if val == self.norm_out: # actual value of self.pin_out is equal to self.norm_out
+                            self.pin_ok.on() # ok
+                        elif val != self.norm_out: # actual value of self.pin_out is not equal to self.norm_out
+                            self.pin_ok.off() # not ok
+                if self.pin_all_ok is not None:
+                    if any(item == 1 for item in Alarm.Action.all_ok): # check for possible error yielded from self.set_output()
+                        self.pin_all_ok.off() # there is at least one error: not ok
+                    else:
+                        self.pin_all_ok.on() # there is no error: ok
+            Alarm.Action.all_ok = [Alarm.Action.all_ok[0]] # clear all entries besides first for next iteration
                 
     class Master:
         sensors = set()
@@ -257,12 +263,19 @@ class Alarm:
         def reset_all(self):
             for action in Alarm.actions:
                 action.triggers = [0] # reset all the error action.triggers to no error for this iteration
+            Alarm.Action.all_ok = [0]
             print('all alarm-outputs reset!')
             
         def reset_selected(self):
-            for sensor in self.object_list:
-                for action in sensor.actions:
-                    action.triggers = [0]
+            for sensor_actions in self.object_list:
+                for action in sensor_actions[1:]: # iterate over the actions in the list 
+                    action.triggers[0] = 0 # reset triggers, in case action was on persistent error
+                    for i, element in enumerate(action.triggers):
+                        if element == 1:
+                            action.triggers[i] = 0 # replace only one 1 in triggers, in case this is action of other sensor with error
+                            break
+            Alarm.Action.all_ok = [0]
+            Alarm.run_actions()
             print('selected alarm-outputs reset!')
                 
         def ignore(self):
@@ -273,7 +286,7 @@ class Alarm:
                     action.triggers[0] = 0 # reset triggers, in case action is persistent but should be ignored in next iteration
                     for i, element in enumerate(action.triggers):
                         if element == 1:
-                            action.triggers[i] = 0 # replace only one 1 in triggers, in case this action has another error from other sensor
+                            action.triggers[i] = 0 # replace only one 1 in triggers, in case this is action of other sensor with error
                             break
                     action.prepare_output()
                     action.set_output() # run action functions to update state

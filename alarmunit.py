@@ -11,6 +11,16 @@ from Alarm import Alarm
 from mcp_pin_class import mcp_pin
 from buzzer_class import buzzer
 
+### BUG REPORT/QUESTIONS 04.09.24 ###
+# - All ok LED is on if current errors are resolved: good? -> should check if relais are ok?
+# -> If RELAIS is set to PERSISTENT, all ok is okay even though it shouldn't! -> Resolved?!
+# - RESET ALL OK BACK TO: CHECKING ALL!!
+# - on 10 Hz during the programm iterations everything is fine but starting and ending it
+# cause trouble
+# - test current config (from wednesday evening!) on 10 Hz
+# - test with analog sensor!
+# - understand backend problems when using 10 Hz: 5 Hz works but less yields problems 
+
 
 ### INITIALIZE I2C BUS ###
 # creating bus-instance
@@ -28,6 +38,7 @@ device_2 = 0x21
 # Input Pins
 pin_mcp_dig1 = mcp_pin(i2c, device_1, 'a7', 'IN')
 pin_mcp_dig2 = mcp_pin(i2c, device_1, 'b0', 'IN')
+pin_mcp_dig3 = mcp_pin(i2c, device_1, 'b2', 'IN')
 pin_reset_persistent = mcp_pin(i2c, device_1, 'a6', 'IN')
 pin_ignore_sensors = mcp_pin(i2c, device_1, 'b1', 'IN')
 # pin_pico_analog = ADC(Pin(26))
@@ -41,6 +52,7 @@ relais2_ok = mcp_pin(i2c, device_2, 'a6', 'OUT')
 
 error_led1 = mcp_pin(i2c, device_2, 'a3', 'OUT')
 error_led2 = mcp_pin(i2c, device_2, 'a2', 'OUT')
+error_led3 = mcp_pin(i2c, device_2, 'b1', 'OUT')
 buzzer_1 = buzzer(PWM(Pin(14)), 500, 200)
 buzzer_2 = buzzer(PWM(Pin(13)), 600, 100)
 
@@ -52,10 +64,11 @@ led_all_ok = mcp_pin(i2c, device_2, 'a4', 'OUT')
 A = Alarm()
 
 ### ACTIONS ### 
-L1 = A.Action('L1', relais1, norm_out=0, pin_ok=relais1_ok, pin_all_ok=led_all_ok)
-L2 = A.Action('L2', relais2, norm_out=0, pin_ok=relais2_ok, pin_all_ok=led_all_ok)
+L1 = A.Action('L1', relais1, norm_out=1, pin_ok=relais1_ok, pin_all_ok=led_all_ok)
+L2 = A.Action('L2', relais2, norm_out=0, pin_ok=relais2_ok, pin_all_ok=led_all_ok,delay = 2, persistent = True)
 L3 = A.Action('L3', error_led1, norm_out=0)
 L4 = A.Action('L4', error_led2, norm_out=0)
+L7 = A.Action('L7', error_led3, norm_out=0)
 # L3 = A.Action('L3', led_mcp_analog, norm_out=0, delay = 3, persistent = True)
 # L4 = A.Action('L4', led_pico1, norm_out=0)
 L5 = A.Action('L5', buzzer_1, norm_out=0, delay = 3, persistent = True)
@@ -63,14 +76,20 @@ L6 = A.Action('L6', buzzer_2, norm_out=0, delay = 3, persistent = True)
 
 ### SENSORS ###
 S1 = A.Sensor('S1', pin_mcp_dig1, 'digital', norm_val=1, actions=[L1, L3, L5])
-S2 = A.Sensor('S2', pin_mcp_dig2, 'digital', norm_val=1, actions=[L2, L4, L6])
+S2 = A.Sensor('S2', pin_mcp_dig2, 'digital', norm_val=1, actions=[L1, L4, L6])
+S3 = A.Sensor('S3', pin_mcp_dig3, 'digital', norm_val=1, actions=[L2, L7])
 #S3 = A.Sensor('S3', pin_pico1, 'digital', norm_val=0, actions=[L4])
 #S_adc = A.Sensor('S_adc', pin_pico_analog, 'analog', analog_error_threshold, actions=[L3, L6])
 
-set1 = [S1, S1.actions[2], S1.actions[1]] 
+set1 = [S1, L1, L5]
+set2 = [S2, L1, L6]
+set3 = [S3, L2]
 
-M1 = A.Master('M1', pin_reset_persistent, norm_val=0, mode='reset_all')
+
+# M1 = A.Master('M1', pin_reset_persistent, norm_val=0, mode='reset_selected', object_list=[S1])
+M1 = A.Master('M1', pin_reset_persistent, norm_val=0, mode='reset_selected', object_list= [set1, set2, set3])
 M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore', object_list=[set1])
+# M2 = A.Master('M2', pin_ignore_sensors, norm_val=0, mode='ignore_all')
 
 ### TIMER CALLBACK FUNCTION ###
 def timer_callback(timer):
@@ -87,7 +106,7 @@ def timer_callback(timer):
 timer = Timer(-1)  # Use the first available hardware timer (-1) on the microcontroller
 
 # Set the timer callback function
-timer.init(period=1000, mode=Timer.PERIODIC, callback=timer_callback)
+timer.init(period=200, mode=Timer.PERIODIC, callback=timer_callback)
 # The timer will fire every x seconds (x000 milliseconds) and call the 
 # timer_callback function.
 
