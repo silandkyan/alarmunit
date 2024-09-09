@@ -66,13 +66,13 @@ A = Alarm()
 ### ACTIONS ### 
 L1 = A.Action('L1', relais1, norm_out=1, pin_ok=relais1_ok, pin_all_ok=led_all_ok)
 L2 = A.Action('L2', relais2, norm_out=0, pin_ok=relais2_ok, pin_all_ok=led_all_ok,delay = 2, persistent = True)
-L3 = A.Action('L3', error_led1, norm_out=0)
-L4 = A.Action('L4', error_led2, norm_out=0)
-L7 = A.Action('L7', error_led3, norm_out=0)
+L3 = A.Action('L3', error_led1, norm_out=0, pin_all_ok=led_all_ok)
+L4 = A.Action('L4', error_led2, norm_out=0, pin_all_ok=led_all_ok)
+L7 = A.Action('L7', error_led3, norm_out=0, pin_all_ok=led_all_ok)
 # L3 = A.Action('L3', led_mcp_analog, norm_out=0, delay = 3, persistent = True)
 # L4 = A.Action('L4', led_pico1, norm_out=0)
-L5 = A.Action('L5', buzzer_1, norm_out=0, delay = 3, persistent = True)
-L6 = A.Action('L6', buzzer_2, norm_out=0, delay = 3, persistent = True)
+L5 = A.Action('L5', buzzer_1, norm_out=0, pin_all_ok=led_all_ok, delay = 3, persistent = True)
+L6 = A.Action('L6', buzzer_2, norm_out=0, pin_all_ok=led_all_ok, delay = 3, persistent = True)
 
 ### SENSORS ###
 S1 = A.Sensor('S1', pin_mcp_dig1, 'digital', norm_val=1, actions=[L1, L3, L5])
@@ -97,6 +97,7 @@ def timer_callback(timer):
     A.check_sensors()
     A.admin_operation()
     A.run_actions()
+    A.check_all_ok()
     # Sleep is NOT needed in this implementation!
     print('time: ', time())
     
@@ -106,7 +107,7 @@ def timer_callback(timer):
 timer = Timer(-1)  # Use the first available hardware timer (-1) on the microcontroller
 
 # Set the timer callback function
-timer.init(period=200, mode=Timer.PERIODIC, callback=timer_callback)
+timer.init(period=1000, mode=Timer.PERIODIC, callback=timer_callback)
 # The timer will fire every x seconds (x000 milliseconds) and call the 
 # timer_callback function.
 

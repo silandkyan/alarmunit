@@ -31,8 +31,24 @@ class Alarm:
             action.eval_state()
             action.prepare_output()  
             action.set_output()
-            action.check_relais()
-           
+    
+    @classmethod
+    def check_all_ok(cls):
+        for action in cls.actions:
+            if action.pin_ok is not None: 
+                val = action.pin_out.value() # read value of action.pin_out
+                if val is not None: # avoid coercing over this if statement to fast?!
+                    if val == action.norm_out: # actual value of action.pin_out is equal to action.norm_out
+                        action.pin_ok.on() # ok
+                    elif val != action.norm_out: # actual value of action.pin_out is not equal to action.norm_out
+                        action.pin_ok.off() # not ok
+            if action.pin_all_ok is not None:
+                if any(item == 1 for item in cls.Action.all_ok): # check for possible error yielded from action.set_output()
+                    action.pin_all_ok.off() # there is at least one error: not ok
+                else:
+                    action.pin_all_ok.on() # there is no error: ok
+        cls.Action.all_ok = [cls.Action.all_ok[0]] # clear all entries besides first for next iteration
+            
     @classmethod
     def admin_operation(cls):
         for master in cls.masters:
@@ -93,14 +109,11 @@ class Alarm:
             if self in Alarm.Master.sensors: # should any action for this particular sensor be ignored
                 for action in (actions & Alarm.Master.actions): # for all actions in intersection of these sets
                     action.triggers.append(0) # always append state for no error
-#                     Alarm.Action.all_ok.append(value)
                 for action in (actions - Alarm.Master.actions): # for rest of actions in self.actions which are not ignored
                     action.triggers.append(value) # append produced value from check functions
-#                     Alarm.Action.all_ok.append(value) 
             else: # if instance is not in cls.Master.sensors, proceed as usual
                 for action in actions:
                     action.triggers.append(value) # append produced value from check functions
-#                     Alarm.Action.all_ok.append(value)
 
             
     class Action:
@@ -140,8 +153,7 @@ class Alarm:
                 self.curr_state = 1
             else:
                 self.curr_state = 0
-            if self.pin_all_ok is not None:
-                Alarm.Action.all_ok.append(self.curr_state)
+            Alarm.Action.all_ok.append(self.curr_state)
                     
         def prepare_output(self):
             '''Prepares the Action object for setting the correct output value.
@@ -197,24 +209,9 @@ class Alarm:
             if self.persistent == True:
                 self.triggers[0] = self.actual_state
                 print('set persistent')
-                if self.pin_all_ok is not None: # all ok is only ok if, there is no persistent relais error
-                    Alarm.Action.all_ok[0] = 1
+                Alarm.Action.all_ok[0] = 1
                     
-        def check_relais(self):
-            for self in Alarm.actions:
-                if self.pin_ok is not None: 
-                    val = self.pin_out.value() # read value of self.pin_out
-                    if val is not None: # avoid coercing over this if statement to fast?!
-                        if val == self.norm_out: # actual value of self.pin_out is equal to self.norm_out
-                            self.pin_ok.on() # ok
-                        elif val != self.norm_out: # actual value of self.pin_out is not equal to self.norm_out
-                            self.pin_ok.off() # not ok
-                if self.pin_all_ok is not None:
-                    if any(item == 1 for item in Alarm.Action.all_ok): # check for possible error yielded from self.set_output()
-                        self.pin_all_ok.off() # there is at least one error: not ok
-                    else:
-                        self.pin_all_ok.on() # there is no error: ok
-            Alarm.Action.all_ok = [Alarm.Action.all_ok[0]] # clear all entries besides first for next iteration
+
                 
     class Master:
         sensors = set()
