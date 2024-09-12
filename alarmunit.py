@@ -7,20 +7,13 @@ Created on Tue Jul  4 16:21:15 2023
 """
 from time import time
 from machine import Pin, Timer, ADC, PWM
-from Alarm import Alarm
+from Alarm_byte import Alarm
 from mcp_pin_class import mcp_pin
 from buzzer_class import buzzer
 
-### BUG REPORT/QUESTIONS 04.09.24 ###
-# - All ok LED is on if current errors are resolved: good? -> should check if relais are ok?
-# -> If RELAIS is set to PERSISTENT, all ok is okay even though it shouldn't! -> Resolved?!
-# - RESET ALL OK BACK TO: CHECKING ALL!!
-# - on 10 Hz during the programm iterations everything is fine but starting and ending it
-# cause trouble
-# - test current config (from wednesday evening!) on 10 Hz
+### BUG REPORT/QUESTIONS 12.09.24 ###
 # - test with analog sensor!
-# - understand backend problems when using 10 Hz: 5 Hz works but less yields problems 
-
+# - with Alarm_byte 50 Hz are okay for current circuit
 
 ### INITIALIZE I2C BUS ###
 # creating bus-instance
@@ -107,7 +100,7 @@ def timer_callback(timer):
 timer = Timer(-1)  # Use the first available hardware timer (-1) on the microcontroller
 
 # Set the timer callback function
-timer.init(period=1000, mode=Timer.PERIODIC, callback=timer_callback)
+timer.init(period=20, mode=Timer.PERIODIC, callback=timer_callback)
 # The timer will fire every x seconds (x000 milliseconds) and call the 
 # timer_callback function.
 
