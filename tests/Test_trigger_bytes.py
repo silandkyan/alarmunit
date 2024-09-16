@@ -48,24 +48,24 @@ class master:
             print(bin(self.index), self.triggers)
             
             
-m = master()
+# m = master()
 
-L1 = m.sub2('L1')
-L2 = m.sub2('L2')
-L3 = m.sub2('L3')
-L4 = m.sub2('L4')
+# L1 = m.sub2('L1')
+# L2 = m.sub2('L2')
+# L3 = m.sub2('L3')
+# L4 = m.sub2('L4')
 
-S1 = m.sub1('S1', [L1, L2])
-S2 = m.sub1('S2', [L1, L3])
-S3 = m.sub1('S3', [L4, L3])
-
-
-# m.call_actions()
-# m.call_sensors()
-m.call_function()
+# S1 = m.sub1('S1', [L1, L2])
+# S2 = m.sub1('S2', [L1, L3])
+# S3 = m.sub1('S3', [L4, L3])
 
 
+# # m.call_actions()
+# # m.call_sensors()
+# m.call_function()
 
+
+print((1 << 1))
 
 
 
